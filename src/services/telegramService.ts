@@ -18,7 +18,7 @@ export interface TelegramResponse {
   result: TelegramUpdate[];
 }
 
-export async function getNewSubscribers(): Promise<
+export async function getSubscribers(): Promise<
   { chatId: string; username: string }[]
 > {
   console.log("🔍 Fetching updates from Telegram...");

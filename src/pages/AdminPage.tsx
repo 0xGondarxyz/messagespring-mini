@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSubscriberStore } from "../store/subscriberStore";
-import { getNewSubscribers } from "../services/telegramService";
+import { getSubscribers } from "../services/telegramService";
 
 export default function AdminPage() {
   const [isChecking, setIsChecking] = useState(false);
@@ -52,6 +52,24 @@ export default function AdminPage() {
         return;
       }
 
+      // Add greeting based on selected language
+      let finalMessage = message;
+      switch (selectedLanguage) {
+        case "french":
+          finalMessage = `Bonjour ${message}`;
+          break;
+        case "thai":
+          finalMessage = `Sawasdee-krub ${message}`;
+          break;
+        case "japanese":
+          finalMessage = `Konnichiwa ${message}`;
+          break;
+        case "english":
+        default:
+          finalMessage = message;
+          break;
+      }
+
       for (const chatId of chatIds) {
         const response = await fetch(
           `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
@@ -62,7 +80,7 @@ export default function AdminPage() {
             },
             body: JSON.stringify({
               chat_id: chatId,
-              text: message,
+              text: finalMessage,
             }),
           }
         );
@@ -84,17 +102,17 @@ export default function AdminPage() {
     }
   };
 
-  const handleCheckForNewSubscribers = async () => {
+  const handleCheckForSubscribers = async () => {
     setIsChecking(true);
 
     try {
-      const newSubs = await getNewSubscribers();
+      const subs = await getSubscribers();
 
       // Create a Map to store unique subscribers by chatId
       const uniqueSubs = new Map();
 
       // Process all new subscribers and keep only the latest one per chatId
-      newSubs.forEach((sub) => {
+      subs.forEach((sub) => {
         uniqueSubs.set(sub.chatId, sub);
       });
 
@@ -111,7 +129,7 @@ export default function AdminPage() {
         }
       }
 
-      if (newSubs.length === 0) {
+      if (subs.length === 0) {
         alert(
           "No new subscribers found. Make sure you clicked /start in the bot."
         );
@@ -224,7 +242,7 @@ export default function AdminPage() {
       {/* Check for New Subscribers Button */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>
         <button
-          onClick={handleCheckForNewSubscribers}
+          onClick={handleCheckForSubscribers}
           disabled={isChecking}
           style={{
             padding: "10px 20px",
@@ -232,7 +250,7 @@ export default function AdminPage() {
             cursor: isChecking ? "not-allowed" : "pointer",
           }}
         >
-          {isChecking ? "Checking..." : "Check for New Subscribers"}
+          {isChecking ? "Checking..." : "Check for Subscribers"}
         </button>
         <p style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
           After scanning QR and clicking /start, click this button
