@@ -5,8 +5,7 @@ import Modal from "./Modal";
 
 export default function AdminPage() {
   const [isChecking, setIsChecking] = useState(false);
-  const { subscribers, addSubscriber, removeSubscriber, updateSubscriber } =
-    useSubscriberStore();
+  const { subscribers, addSubscriber, updateSubscriber } = useSubscriberStore();
 
   const [message, setMessage] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("english");
@@ -153,7 +152,6 @@ export default function AdminPage() {
           const subscriber = addSubscriber(username);
           // Update with chatId
           updateSubscriber(subscriber.id, { chatId });
-          // alert(`New subscriber: @${username}`);
         }
       }
 

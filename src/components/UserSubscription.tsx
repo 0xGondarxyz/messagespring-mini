@@ -12,7 +12,7 @@ export default function UserSubscription() {
     <div className="w-full max-w-2xl mx-auto">
       <div className="bg-white border-4 border-black p-6 sm:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
         <h1 className="text-3xl sm:text-4xl font-black mb-4 text-black uppercase tracking-tight">
-          City Alerts Project
+          MessageSpring Mini
         </h1>
         <p className="text-base sm:text-lg text-gray-700 mb-8 font-medium">
           Subscribe to receive emergency alerts and city updates via Telegram
