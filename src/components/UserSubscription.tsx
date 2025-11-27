@@ -1,38 +1,77 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useSubscriberStore } from "../store/subscriberStore";
-import { getNewSubscribers } from "../services/telegramService";
+import { getSubscribers } from "../services/telegramService";
 
 export default function UserSubscription() {
   const [isChecking, setIsChecking] = useState(false);
-  const { subscribers, addSubscriber, removeSubscriber, updateSubscriber } =
-    useSubscriberStore();
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const { subscribers, addSubscriber, removeSubscriber, isRemoved, removedSubscribers } = useSubscriberStore();
 
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
   const telegramBotLink = `https://t.me/${botUsername}?start=subscribe`;
 
-  // Add this line right after:
-  console.log("QR Code URL:", telegramBotLink);
+  const handleSubscribe = async () => {
+    try {
+      setIsSubscribing(true);
+      const currentSubs = await getSubscribers();
+      
+      // Find the current user in the subscribers list
+      const currentUser = currentSubs[0]; // Assuming the most recent subscriber is first
+      
+      if (!currentUser) {
+        alert("Please start the bot first by clicking the link below");
+        return;
+      }
 
-  const handleCheckForNewSubscribers = async () => {
+      // Check if user was previously unsubscribed
+      const wasRemoved = removedSubscribers.some(sub => sub.chatId === currentUser.chatId);
+      
+      if (wasRemoved) {
+        // Remove from removedSubscribers and add back to subscribers
+        const updatedRemoved = removedSubscribers.filter(sub => sub.chatId !== currentUser.chatId);
+        const userToResubscribe = removedSubscribers.find(sub => sub.chatId === currentUser.chatId);
+        
+        if (userToResubscribe) {
+          addSubscriber(userToResubscribe.username, userToResubscribe.chatId);
+          alert(`Welcome back, ${userToResubscribe.username}! You've been resubscribed.`);
+        }
+      } else {
+        // Regular subscription
+        addSubscriber(currentUser.username, currentUser.chatId);
+        alert(`Welcome, ${currentUser.username}! You've been subscribed.`);
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      alert("Error processing subscription. Please try again.");
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleCheckForSubscribers = async () => {
     setIsChecking(true);
 
     try {
-      const newSubs = await getNewSubscribers();
+      const subs = await getSubscribers();
 
-      for (const { chatId, username } of newSubs) {
+      for (const { chatId, username } of subs) {
+        // Skip if user has unsubscribed
+        if (isRemoved(chatId)) {
+          console.log(`Skipping unsubscribed user: ${username} (${chatId})`);
+          continue;
+        }
+
         // Check if already subscribed
         const existing = subscribers.find((sub) => sub.chatId === chatId);
 
         if (!existing) {
-          const subscriber = addSubscriber(username);
-          // Update with chatId
-          updateSubscriber(subscriber.id, { chatId });
-          alert(`New subscriber: @${username}`);
+          addSubscriber(username, chatId);
+          console.log(`Added new subscriber: ${username} (${chatId})`);
         }
       }
 
-      if (newSubs.length === 0) {
+      if (subs.length === 0) {
         alert(
           "No new subscribers found. Make sure you clicked /start in the bot."
         );
@@ -45,6 +84,10 @@ export default function UserSubscription() {
     }
   };
 
+  const handleRemoveSubscriber = (id: string) => {
+    removeSubscriber(id);
+  };
+
   return (
     <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
       <h1>City Alerts Project</h1>
@@ -53,19 +96,36 @@ export default function UserSubscription() {
       {/* QR Code Section */}
       <div style={{ marginTop: "30px", textAlign: "center" }}>
         <h3>Scan to Subscribe</h3>
-        <QRCodeSVG value={telegramBotLink} size={200} />
+        <div 
+          style={{ cursor: 'pointer', display: 'inline-block' }}
+          onClick={handleSubscribe}
+        >
+          <QRCodeSVG value={telegramBotLink} size={200} />
+        </div>
         <p style={{ marginTop: "10px" }}>
-          Or click:{" "}
-          <a href={telegramBotLink} target="_blank" rel="noopener noreferrer">
-            Subscribe via Telegram
-          </a>
+          <button 
+            onClick={handleSubscribe}
+            disabled={isSubscribing}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              cursor: 'pointer',
+              backgroundColor: isSubscribing ? '#ccc' : '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              textDecoration: 'none',
+            }}
+          >
+            {isSubscribing ? 'Processing...' : 'Subscribe via Telegram'}
+          </button>
         </p>
       </div>
 
       {/* Check for New Subscribers Button */}
       <div style={{ marginTop: "20px", textAlign: "center" }}>
         <button
-          onClick={handleCheckForNewSubscribers}
+          onClick={handleCheckForSubscribers}
           disabled={isChecking}
           style={{
             padding: "10px 20px",
@@ -73,7 +133,7 @@ export default function UserSubscription() {
             cursor: isChecking ? "not-allowed" : "pointer",
           }}
         >
-          {isChecking ? "Checking..." : "Check for New Subscribers"}
+          {isChecking ? "Checking..." : "Check for Subscribers"}
         </button>
         <p style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
           After scanning QR and clicking /start, click this button
@@ -116,7 +176,7 @@ export default function UserSubscription() {
                   Subscribed: {new Date(sub.subscribedAt).toLocaleString()}
                 </div>
                 <button
-                  onClick={() => removeSubscriber(sub.id)}
+                  onClick={() => handleRemoveSubscriber(sub.id)}
                   style={{
                     marginTop: "5px",
                     padding: "5px 10px",
